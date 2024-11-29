@@ -3,6 +3,7 @@ require_once(__DIR__ . '/helpers/vendor-admin-woo-helper.php');
 require_once(__DIR__ . '/helpers/vendor-admin-wcfm-helper.php');
 require_once(__DIR__ . '/helpers/vendor-admin-dokan-helper.php');
 require_once(__DIR__ . '/helpers/product-management.php');
+require_once(__DIR__ . '/helpers/coupon-management.php');
 
 /*
  * Base REST Controller for flutter
@@ -242,6 +243,47 @@ class FlutterVendorAdmin extends FlutterBaseController
                 }
             ),
         ));
+
+        // Coupon endpoints
+
+        register_rest_route($this->namespace, '/coupons', array(
+            array(
+                'methods' => WP_REST_Server::READABLE,
+                'callback' => array(
+                    $this,
+                    'vendor_admin_get_coupons'
+                ),
+                'permission_callback' => function () {
+                    return parent::checkApiPermission();
+                }
+            ),
+        ));
+
+        register_rest_route($this->namespace, '/coupons', array(
+            array(
+                'methods' => 'POST',
+                'callback' => array(
+                    $this,
+                    'vendor_admin_create_coupon'
+                ),
+                'permission_callback' => function () {
+                    return parent::checkApiPermission();
+                }
+            ),
+        ));
+
+        register_rest_route($this->namespace, '/coupons/(?P<id>[\d]+)', array(
+            array(
+                'methods' => 'PUT',
+                'callback' => array(
+                    $this,
+                    'vendor_admin_update_coupon'
+                ),
+                'permission_callback' => function () {
+                    return parent::checkApiPermission();
+                }
+            ),
+        ));
     }
 
     public function get_delivery_users($request)
@@ -467,16 +509,8 @@ class FlutterVendorAdmin extends FlutterBaseController
             return $user_id;
         }
 
-        $helper = new VendorAdminWCFMHelper();
-        if (isset($request['platform'])) {
-            if ($request['platform'] == 'woo') {
-                $helper = new VendorAdminWooHelper();
-            }
-            if ($request['platform'] == 'dokan') {
-                $helper = new VendorAdminDokanHelper();
-            }
-        }
-        return $helper->vendor_admin_create_coupon($request, $user_id);
+        $helper = new CouponManagementHelper();
+        return $helper->create_coupon($request, $user_id);
     }
 
 
@@ -532,6 +566,20 @@ class FlutterVendorAdmin extends FlutterBaseController
             }
         }
         return $helper->get_notification_by_vendor($request, $user_id);
+    }
+
+    public function vendor_admin_get_coupons($request)
+    {
+        $user_id = $this->authorize_user($request['token']);
+        if (is_wp_error($user_id)) {
+            return $user_id;
+        }
+
+        $helper = new CouponManagementHelper();
+        return new WP_REST_Response(array(
+            'status' => 'success',
+            'response' => $helper->get_coupons($request, $user_id),
+        ), 200);
     }
 
     public function flutter_get_reviews_single_vendor($request)
@@ -628,6 +676,16 @@ class FlutterVendorAdmin extends FlutterBaseController
         ), 200);
     }
 
+    public function vendor_admin_update_coupon($request)
+    {
+        $user_id = $this->authorize_user($request['token']);
+        if (is_wp_error($user_id)) {
+            return $user_id;
+        }
+
+        $helper = new CouponManagementHelper();
+        return $helper->update_coupon($request, $user_id);
+    }
 
     protected function authorize_user($token)
     {
