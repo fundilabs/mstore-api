@@ -146,6 +146,8 @@ class CouponManagementHelper
 
         $coupon = array(
             'post_title' => $code,
+            'post_excerpt' => $code,
+            'post_name' => $code,
             'post_content' => $description,
             'post_status' => 'publish',
             'post_author' => $user_id,
@@ -171,17 +173,21 @@ class CouponManagementHelper
             update_post_meta($coupon_id, 'maximum_amount', '');
             update_post_meta($coupon_id, 'customer_email', array());
 
+            $updated_coupon = get_post($coupon_id);
+            $coupon_data = array(
+                'ID' => strval($coupon_id),
+                'post_title' => $updated_coupon->post_title,
+                'type' => get_post_meta($coupon_id, 'discount_type', true),
+                'amount' => strval(get_post_meta($coupon_id, 'coupon_amount', true)),
+                'description' => $updated_coupon->post_content,
+                'expiry' => get_post_meta($coupon_id, 'date_expires', true),
+                'usage_limit' => strval(get_post_meta($coupon_id, 'usage_limit', true)),
+                'usage_count' => strval(get_post_meta($coupon_id, 'usage_count', true))
+            );
+
             return new WP_REST_Response(array(
                 'status' => 'success',
-                'response' => array(
-                    'id' => $coupon_id,
-                    'code' => $code,
-                    'type' => $type,
-                    'amount' => $amount,
-                    'description' => $description,
-                    'expiry' => $expiry,
-                    'usage_limit' => $usage_limit
-                )
+                'response' => $coupon_data
             ), 200);
         }
 
@@ -231,29 +237,47 @@ class CouponManagementHelper
 
         $coupon = array(
             'ID' => $coupon_id,
-            'post_title' => $code,
-            'post_content' => $description,
         );
+        
+        if (!empty($code)) {
+            $coupon['post_title'] = $code;
+        }
+        
+        if (isset($request['description'])) {
+            $coupon['post_content'] = $description;
+        }
 
         $updated = wp_update_post($coupon);
 
         if (!is_wp_error($updated)) {
-            update_post_meta($coupon_id, 'discount_type', $type);
-            update_post_meta($coupon_id, 'coupon_amount', $amount);
-            update_post_meta($coupon_id, 'usage_limit', $usage_limit);
-            update_post_meta($coupon_id, 'date_expires', strtotime($expiry));
+            if (isset($request['type'])) {
+                update_post_meta($coupon_id, 'discount_type', $type);
+            }
+            if (isset($request['amount'])) {
+                update_post_meta($coupon_id, 'coupon_amount', $amount);
+            }
+            if (isset($request['usage_limit'])) {
+                update_post_meta($coupon_id, 'usage_limit', $usage_limit);
+            }
+            if (isset($request['expiry'])) {
+                update_post_meta($coupon_id, 'date_expires', strtotime($expiry));
+            }
+
+            $updated_coupon = get_post($coupon_id);
+            $coupon_data = array(
+                'ID' => strval($coupon_id),
+                'post_title' => $updated_coupon->post_title,
+                'type' => get_post_meta($coupon_id, 'discount_type', true),
+                'amount' => strval(get_post_meta($coupon_id, 'coupon_amount', true)),
+                'description' => $updated_coupon->post_content,
+                'expiry' => get_post_meta($coupon_id, 'date_expires', true),
+                'usage_limit' => strval(get_post_meta($coupon_id, 'usage_limit', true)),
+                'usage_count' => strval(get_post_meta($coupon_id, 'usage_count', true))
+            );
 
             return new WP_REST_Response(array(
                 'status' => 'success',
-                'response' => array(
-                    'id' => $coupon_id,
-                    'code' => $code,
-                    'type' => $type,
-                    'amount' => $amount,
-                    'description' => $description,
-                    'expiry' => $expiry,
-                    'usage_limit' => $usage_limit
-                )
+                'response' => $coupon_data
             ), 200);
         }
 
